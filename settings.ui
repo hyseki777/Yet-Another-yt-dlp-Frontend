@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>484</width>
+    <height>186</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QPushButton" name="save_button">
+   <property name="geometry">
+    <rect>
+     <x>390</x>
+     <y>134</y>
+     <width>89</width>
+     <height>37</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="dlocation_lineEdit">
+   <property name="geometry">
+    <rect>
+     <x>182</x>
+     <y>20</y>
+     <width>301</width>
+     <height>34</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>22</x>
+     <y>20</y>
+     <width>161</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Download Location:</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="download_button">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>135</y>
+     <width>151</width>
+     <height>37</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Download yt-dlp</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="download_lineEdit">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>62</y>
+     <width>461</width>
+     <height>34</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="checkUpdate_pushButton">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>96</y>
+     <width>151</width>
+     <height>37</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Check yt-dlp update</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="update_label">
+   <property name="geometry">
+    <rect>
+     <x>240</x>
+     <y>96</y>
+     <width>241</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
