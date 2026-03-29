@@ -1,5 +1,9 @@
 # Yet-Another-yt-dlp-Frontend
 
+
+![Screenshot](Screenshot.png)
+
+
 Simple yt-dlp frontend made with Pyside6.
 
 Tested on Debian Trixie and CachyOS, both KDE. I may do a build for Windows.
