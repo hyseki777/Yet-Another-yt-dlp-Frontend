@@ -13,3 +13,6 @@ DEPENDENCIES
 It can get the latest yt-dlp directly from the settings but still you have to manually install the yt-dlp dependencies for it to work.
 This is made via curl so it also need that.
 Besides that the build is made with pyinstaller so it shouldn't have any other dependency i guess.
+
+
+Link to the amazing yt-dlp page: https://github.com/yt-dlp/yt-dlp
