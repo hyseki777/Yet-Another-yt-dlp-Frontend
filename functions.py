@@ -126,10 +126,6 @@ def process_finished(exit_code, process):
     progress = window.q_tableWidget.item(p[2], 2).text()
     if progress == "Downloading":
         progress = ''
-    # if p[5] != -1 and window.q_tableWidget.item(p[2], 3).text() != "-----MB":
-    #    videoSize = p[5] + \
-    #        float(window.q_tableWidget.item(p[2], 3).text()[:-3])
-    #    window.q_tableWidget.setItem(p[2], 3, QTableWidgetItem(videoSize))
     if exit_code == 15:  # terminate
         window.q_tableWidget.setItem(
             p[2], 2, QTableWidgetItem("Stopped (" + progress + ")"))
@@ -453,9 +449,10 @@ def handle_name_size(process):
     if out:
         out = out.split("//--//")
         link = window.q_tableWidget.item(index, 0).text()
-        window.q_tableWidget.setItem(
-            # column 0 -> name
-            index, 0, QTableWidgetItem(f"{out[0]}//--//{link}"))
+        if "//--//" not in link:
+            window.q_tableWidget.setItem(
+                # column 0 -> name
+                index, 0, QTableWidgetItem(f"{out[0]}//--//{link}"))
         if out[1] != "NA":
             size = float(out[1])
             count = 0

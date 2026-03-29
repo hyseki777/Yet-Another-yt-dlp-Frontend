@@ -19,9 +19,6 @@ if __name__ == "__main__":
     functions.setLoader(loader)
     functions.setWindow(window)
 
-    #       RECORDAR LA OTRA DEPENCIA DENO ESE
-    #       POSIBLE INSTALACION
-
     window.add_button.clicked.connect(
         lambda: functions.addToQ(window.quality_cb.currentText()))
     window.download_button.clicked.connect(lambda: functions.download(False))
