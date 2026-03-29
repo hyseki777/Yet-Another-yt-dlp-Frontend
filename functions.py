@@ -454,21 +454,32 @@ def handle_name_size(process):
                 # column 0 -> name
                 index, 0, QTableWidgetItem(f"{out[0]}//--//{link}"))
         if out[1] != "NA":
-            size = float(out[1])
-            count = 0
-            while size >= 1024:
-                size /= 1024
-                count += 1
-            sizes = ["B", "KiB", "MiB", "GiB"]
+            size = formatBytes(float(out[1]))
+            print(size)
             tableSize = window.q_tableWidget.item(index, 3).text()
             if tableSize != "-----MB":
-                tableSize = float(tableSize[:-3])
-                size += tableSize
-                if size >= 1024:
-                    size /= 1024
-                    count += 1
-            window.q_tableWidget.setItem(index, 3, QTableWidgetItem(
-                "{:.2f}".format(size) + sizes[count]))  # column 3 -> size
+                size = formatBytes(size, True) + \
+                    formatBytes(tableSize, inversed=True)
+                size = formatBytes(size)
+            print(size)
+            window.q_tableWidget.setItem(
+                index, 3, QTableWidgetItem(size))  # column 3 -> size
+
+
+def formatBytes(n, inversed=False):  # if inversed then is to convert to bytes
+    sizes = ["B", "KiB", "MiB", "GiB"]
+    if not inversed:
+        count = 0
+        while n >= 1024:
+            n /= 1024
+            count += 1
+        return "{:.2f}".format(n) + sizes[count]
+    count = sizes.index(n[-3:])
+    n = float(n[:-3])
+    while count > 0:
+        n *= 1024
+        count -= 1
+    return n
 
 
 def pressedEnter():
