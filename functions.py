@@ -1,24 +1,26 @@
-from PySide6.QtWidgets import QLabel, QMessageBox, QTableWidgetItem, QMainWindow
+from PySide6.QtWidgets import QCheckBox, QComboBox, QLineEdit, QMessageBox, QTableWidgetItem, QMainWindow
 from PySide6.QtCore import QFile, QProcess, Qt
 from PySide6.QtUiTools import QUiLoader
 from queue import Queue
 import os
 import requests
+import json
 from hashlib import sha256
 
 
-def getDownloadLocation():
-    sett_file = "settings.ini"
-    if os.path.exists(sett_file):
-        with open(sett_file, "r") as f:
-            return f.read().split('=')[1]
-    else:
-        with open(sett_file, "w") as f:
-            f.write("DOWNLOAD_LOCATION=.")
-            return "."
+def getSettings():
+    if not os.path.exists("settings.ini"):
+        with open("settings.ini", "w") as file:
+            s = {"DOWNLOAD_LOCATION": "DEFAULT", "PROXY": False, "USER": "",
+                 "PASSWORD": "", "ADDRESS": "", "PROTOCOL": "None", "DEFAULT_QUALITY": "720p"}
+            file.write(json.dumps(s))
+            return s
+    with open("settings.ini", "r") as file:
+        s = json.loads(file.read())
+        return s
 
 
-DOWNLOAD_LOCATION = getDownloadLocation()
+SETTINGS = getSettings()
 FORMATLIST = Queue()
 processes = []
 outputWindows = []
@@ -26,6 +28,10 @@ optWindows = []
 formatsWindows = []
 loader = QUiLoader()
 window = QMainWindow()
+
+
+def setDefaultQuality():
+    window.quality_cb.setCurrentText(SETTINGS["DEFAULT_QUALITY"])
 
 
 def setLoader(ld):
@@ -36,12 +42,6 @@ def setLoader(ld):
 def setWindow(wd):
     global window
     window = wd
-
-
-def setDownloadLocation(location):
-    sett_file = "settings.ini"
-    with open(sett_file, "w") as f:
-        f.write("DOWNLOAD_LOCATION=" + location)
 
 
 def handle_stdout(process, quality):
@@ -78,6 +78,9 @@ def handle_stdout(process, quality):
                     index, 4, QTableWidgetItem(out[5]))  # Speed
                 window.q_tableWidget.setItem(
                     index, 5, QTableWidgetItem(out[7]))  # Remaining
+        for i in range(2, 6):
+            window.q_tableWidget.item(
+                index, i).setTextAlignment(Qt.AlignCenter)
         for win in outputWindows:
             if not win.isVisible():
                 outputWindows.remove(win)
@@ -143,12 +146,18 @@ def process_finished(exit_code, process):
         processes.remove(p)
         download(True)
         return
+    for i in range(2, 6):
+        window.q_tableWidget.item(
+            p[2], i).setTextAlignment(Qt.AlignCenter)
     processes.remove(p)
 
 
 def download(qFlag):
     if not os.path.exists("yt-dlp_linux"):
         return QMessageBox.information(window, 'Alert', "yt-dlp not found, download it from the settings")
+    if SETTINGS["DOWNLOAD_LOCATION"] == "DEFAULT":
+        return QMessageBox.information(window, 'Alert', "Download location not set, please check the settings")
+
     link = ''
     index = -1
     for i in range(window.q_tableWidget.rowCount()):
@@ -169,21 +178,36 @@ def download(qFlag):
         # Array Format -> [process, outputs, row, DlAudio, percent, videoSize]
         processes.append([process, Queue(maxsize=10), index, False, 0, -1])
         process.setProgram("./yt-dlp_linux")
+        proxyData = getProxyData() if SETTINGS["PROXY"] else ""
         nameFormat = f"%(title)s [{quality[0]}].%(ext)s"
         if "&list" in link:
             nameFormat = "%(playlist_index)s-" + nameFormat
         if quality[1] == "ba":
             process.setArguments([link, "--extract-audio", "--audio-format", "mp3", "-o", nameFormat,
-                                 "--embed-thumbnail", "--convert-thumbnails", "jpg", "--embed-chapters", "-P", DOWNLOAD_LOCATION])
+                                 "--embed-thumbnail", "--convert-thumbnails", "jpg", "--embed-chapters",
+                                  "-P", SETTINGS["DOWNLOAD_LOCATION"], "--proxy", proxyData])
         else:
             process.setArguments([link, "-f", quality[1], "-o", nameFormat, "--embed-thumbnail",
-                                 "--convert-thumbnails", "jpg", "--embed-chapters", "-P", DOWNLOAD_LOCATION])
+                                 "--convert-thumbnails", "jpg", "--embed-chapters",
+                                  "-P", SETTINGS["DOWNLOAD_LOCATION"], "--proxy", proxyData])
         process.readyReadStandardOutput.connect(
             lambda: handle_stdout(process, quality[1]))
         process.finished.connect(
             lambda code: process_finished(code, process))
         process.start()
         window.q_tableWidget.setItem(index, 2, QTableWidgetItem("Downloading"))
+
+
+def getProxyData():
+    user = SETTINGS["USER"]
+    passw = SETTINGS["PASSWORD"]
+    protocol = SETTINGS["PROTOCOL"].lower()
+    address = SETTINGS["ADDRESS"]
+    if user != "":
+        user = f"{user}:{passw}@"
+
+    data = f"{protocol}://{user}{address}"
+    return data
 
 
 def downloadAll():
@@ -223,23 +247,68 @@ def openOptions():
     optWindow = loader.load(optFile)
     optWindow.setWindowTitle("Settings")
     optFile.close()
+    if not SETTINGS["PROXY"]:
+        optWindow.protocol_comboBox.addItem("None")
+        optWindow.user_lineEdit.setReadOnly(True)
+        optWindow.pass_lineEdit.setReadOnly(True)
+        optWindow.address_lineEdit.setReadOnly(True)
+        optWindow.protocol_comboBox.setEnabled(False)
+    optWindow.dlocation_lineEdit.setText(SETTINGS["DOWNLOAD_LOCATION"])
+    optWindow.proxy_checkBox.setChecked(SETTINGS["PROXY"])
+    optWindow.user_lineEdit.setText(SETTINGS["USER"])
+    optWindow.pass_lineEdit.setText(SETTINGS["PASSWORD"])
+    optWindow.address_lineEdit.setText(SETTINGS["ADDRESS"])
+    optWindow.protocol_comboBox.setCurrentText(SETTINGS["PROTOCOL"])
+    optWindow.quality_cb.setCurrentText(SETTINGS["DEFAULT_QUALITY"])
     optWindow.save_button.clicked.connect(lambda: saveOptions(optWindow))
+    optWindow.proxy_checkBox.stateChanged.connect(
+        lambda: toggleProxy(optWindow))
     optWindow.update_label.setAlignment(Qt.AlignRight)
     optWindow.download_lineEdit.setReadOnly(True)
     optWindow.download_button.clicked.connect(
         lambda: download_yt_dlp(optWindow, False))
     optWindow.checkUpdate_pushButton.clicked.connect(
         lambda: download_yt_dlp(optWindow, True))
-    optWindow.dlocation_lineEdit.setText(getDownloadLocation())
     optWindow.show()
     optWindows.append(optWindow)
 
 
+def toggleProxy(optwin):
+    proxy = optwin.proxy_checkBox.isChecked()
+    if proxy:
+        optwin.user_lineEdit.setReadOnly(False)
+        optwin.pass_lineEdit.setReadOnly(False)
+        optwin.address_lineEdit.setReadOnly(False)
+        optwin.protocol_comboBox.setEnabled(True)
+        optwin.protocol_comboBox.setCurrentText("HTTP")
+        optwin.protocol_comboBox.removeItem(4)
+    else:
+        optwin.user_lineEdit.setReadOnly(True)
+        optwin.user_lineEdit.setText("")
+        optwin.pass_lineEdit.setReadOnly(True)
+        optwin.pass_lineEdit.setText("")
+        optwin.address_lineEdit.setReadOnly(True)
+        optwin.address_lineEdit.setText("")
+        optwin.protocol_comboBox.setEnabled(False)
+        optwin.protocol_comboBox.addItem("None")
+        optwin.protocol_comboBox.setCurrentText("None")
+
+
 def saveOptions(optwin):
-    loc = optwin.dlocation_lineEdit.text()
-    setDownloadLocation(loc)
-    global DOWNLOAD_LOCATION
-    DOWNLOAD_LOCATION = loc
+    location = optwin.dlocation_lineEdit.text()
+    proxy = optwin.proxy_checkBox.isChecked()
+    user = optwin.user_lineEdit.text()
+    passw = optwin.pass_lineEdit.text()
+    address = optwin.address_lineEdit.text()
+    protocol = optwin.protocol_comboBox.currentText()
+    defaultQ = optwin.quality_cb.currentText()
+    with open("settings.ini", "w") as file:
+        s = {"DOWNLOAD_LOCATION": location, "PROXY": proxy, "USER": user,
+             "PASSWORD": passw, "ADDRESS": address, "PROTOCOL": protocol, "DEFAULT_QUALITY": defaultQ}
+        file.write(json.dumps(s))
+    global SETTINGS
+    SETTINGS = s
+    setDefaultQuality()
     optwin.close()
 
 
@@ -455,15 +524,14 @@ def handle_name_size(process):
                 index, 0, QTableWidgetItem(f"{out[0]}//--//{link}"))
         if out[1] != "NA":
             size = formatBytes(float(out[1]))
-            print(size)
             tableSize = window.q_tableWidget.item(index, 3).text()
             if tableSize != "-----MB":
                 size = formatBytes(size, True) + \
                     formatBytes(tableSize, inversed=True)
                 size = formatBytes(size)
-            print(size)
             window.q_tableWidget.setItem(
                 index, 3, QTableWidgetItem(size))  # column 3 -> size
+    window.q_tableWidget.item(index, 3).setTextAlignment(Qt.AlignCenter)
 
 
 def formatBytes(n, inversed=False):  # if inversed then is to convert to bytes

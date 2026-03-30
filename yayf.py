@@ -18,6 +18,7 @@ if __name__ == "__main__":
     import functions
     functions.setLoader(loader)
     functions.setWindow(window)
+    functions.setDefaultQuality()
 
     window.add_button.clicked.connect(
         lambda: functions.addToQ(window.quality_cb.currentText()))
