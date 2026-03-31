@@ -1,17 +1,19 @@
-from PySide6.QtWidgets import QCheckBox, QComboBox, QLineEdit, QMessageBox, QTableWidgetItem, QMainWindow
+from PySide6.QtWidgets import QMessageBox, QTableWidgetItem, QMainWindow
 from PySide6.QtCore import QFile, QProcess, Qt
 from PySide6.QtUiTools import QUiLoader
 from queue import Queue
 import os
 import requests
 import json
+import platform
+import locale
 from hashlib import sha256
 
 
 def getSettings():
     if not os.path.exists("settings.ini"):
         with open("settings.ini", "w") as file:
-            s = {"DOWNLOAD_LOCATION": "DEFAULT", "PROXY": False, "USER": "",
+            s = {"DOWNLOAD_LOCATION": "/DEFAULT/", "PROXY": False, "USER": "",
                  "PASSWORD": "", "ADDRESS": "", "PROTOCOL": "None", "DEFAULT_QUALITY": "720p"}
             file.write(json.dumps(s))
             return s
@@ -20,6 +22,19 @@ def getSettings():
         return s
 
 
+def getYTDLP():
+    system = platform.system()
+    if system == "Windows":
+        return "yt-dlp.exe"
+    elif system == "Linux":
+        return "yt-dlp_linux"
+    elif system == "Darwin":
+        return "yt-dlp_macos"
+    else:
+        raise Exception("System not supported")
+
+
+YTDLP = getYTDLP()
 SETTINGS = getSettings()
 FORMATLIST = Queue()
 processes = []
@@ -45,7 +60,8 @@ def setWindow(wd):
 
 
 def handle_stdout(process, quality):
-    data = process.readAllStandardOutput().data().decode()
+    encoding = locale.getpreferredencoding(False)
+    data = process.readAllStandardOutput().data().decode(encoding, errors="replace")
     q = Queue(maxsize=10)
     index = -1
     for ps in processes:
@@ -92,7 +108,8 @@ def handle_stdout(process, quality):
 
 
 def handle_list_stdout(process):
-    data = process.readAllStandardOutput().data().decode()
+    encoding = locale.getpreferredencoding(False)
+    data = process.readAllStandardOutput().data().decode(encoding, errors="replace")
     global FORMATLIST
     out = data.strip()
     if out:
@@ -129,9 +146,6 @@ def process_finished(exit_code, process):
     progress = window.q_tableWidget.item(p[2], 2).text()
     if progress == "Downloading":
         progress = ''
-    if exit_code == 15:  # terminate
-        window.q_tableWidget.setItem(
-            p[2], 2, QTableWidgetItem("Stopped (" + progress + ")"))
     if exit_code == 1:  # general error
         window.q_tableWidget.setItem(
             p[2], 2, QTableWidgetItem("Error (" + progress + ")"))
@@ -140,12 +154,15 @@ def process_finished(exit_code, process):
         while not q.empty():
             msg += q.get() + "<br>"
         QMessageBox.information(window, 'Alert', msg)
-    if exit_code == 0:  # succesful
+    elif exit_code == 0:  # succesful
         window.q_tableWidget.setItem(
             p[2], 2, QTableWidgetItem("Finished"))
         processes.remove(p)
         download(True)
         return
+    else:  # terminate
+        window.q_tableWidget.setItem(
+            p[2], 2, QTableWidgetItem("Stopped (" + progress + ")"))
     for i in range(2, 6):
         window.q_tableWidget.item(
             p[2], i).setTextAlignment(Qt.AlignCenter)
@@ -153,9 +170,9 @@ def process_finished(exit_code, process):
 
 
 def download(qFlag):
-    if not os.path.exists("yt-dlp_linux"):
+    if not os.path.exists(YTDLP):
         return QMessageBox.information(window, 'Alert', "yt-dlp not found, download it from the settings")
-    if SETTINGS["DOWNLOAD_LOCATION"] == "DEFAULT":
+    if SETTINGS["DOWNLOAD_LOCATION"] == "/DEFAULT/":
         return QMessageBox.information(window, 'Alert', "Download location not set, please check the settings")
 
     link = ''
@@ -177,7 +194,7 @@ def download(qFlag):
 
         # Array Format -> [process, outputs, row, DlAudio, percent, videoSize]
         processes.append([process, Queue(maxsize=10), index, False, 0, -1])
-        process.setProgram("./yt-dlp_linux")
+        process.setProgram(YTDLP)
         proxyData = getProxyData() if SETTINGS["PROXY"] else ""
         nameFormat = f"%(title)s [{quality[0]}].%(ext)s"
         if "&list" in link:
@@ -249,9 +266,9 @@ def openOptions():
     optFile.close()
     if not SETTINGS["PROXY"]:
         optWindow.protocol_comboBox.addItem("None")
-        optWindow.user_lineEdit.setReadOnly(True)
-        optWindow.pass_lineEdit.setReadOnly(True)
-        optWindow.address_lineEdit.setReadOnly(True)
+        optWindow.user_lineEdit.setEnabled(False)
+        optWindow.pass_lineEdit.setEnabled(False)
+        optWindow.address_lineEdit.setEnabled(False)
         optWindow.protocol_comboBox.setEnabled(False)
     optWindow.dlocation_lineEdit.setText(SETTINGS["DOWNLOAD_LOCATION"])
     optWindow.proxy_checkBox.setChecked(SETTINGS["PROXY"])
@@ -276,18 +293,18 @@ def openOptions():
 def toggleProxy(optwin):
     proxy = optwin.proxy_checkBox.isChecked()
     if proxy:
-        optwin.user_lineEdit.setReadOnly(False)
-        optwin.pass_lineEdit.setReadOnly(False)
-        optwin.address_lineEdit.setReadOnly(False)
+        optwin.user_lineEdit.setEnabled(True)
+        optwin.pass_lineEdit.setEnabled(True)
+        optwin.address_lineEdit.setEnabled(True)
         optwin.protocol_comboBox.setEnabled(True)
         optwin.protocol_comboBox.setCurrentText("HTTP")
         optwin.protocol_comboBox.removeItem(4)
     else:
-        optwin.user_lineEdit.setReadOnly(True)
+        optwin.user_lineEdit.setEnabled(False)
         optwin.user_lineEdit.setText("")
-        optwin.pass_lineEdit.setReadOnly(True)
+        optwin.pass_lineEdit.setEnabled(False)
         optwin.pass_lineEdit.setText("")
-        optwin.address_lineEdit.setReadOnly(True)
+        optwin.address_lineEdit.setEnabled(False)
         optwin.address_lineEdit.setText("")
         optwin.protocol_comboBox.setEnabled(False)
         optwin.protocol_comboBox.addItem("None")
@@ -328,8 +345,9 @@ def openListFormats():
 
     link = window.link_line.text()
     proc = QProcess()
-    proc.setProgram("./yt-dlp_linux")
-    proc.setArguments([link, "-F"])
+    proc.setProgram(YTDLP)
+    proxyData = getProxyData() if SETTINGS["PROXY"] else ""
+    proc.setArguments([link, "-F", "--proxy", proxyData])
     proc.readyReadStandardOutput.connect(lambda: handle_list_stdout(proc))
     proc.finished.connect(lambda: list_finished(proc, lfWindow))
     proc.start()
@@ -338,6 +356,8 @@ def openListFormats():
 def stopall():
     for ps in processes:
         ps[0].terminate()
+        if not ps[0].waitForFinished(1000):
+            ps[0].kill()
 
 
 def remove():
@@ -399,13 +419,13 @@ def download_yt_dlp(optwin, check):
     download_link = ''
     sha = ''
     for asset in release["assets"]:
-        if asset["name"] == "yt-dlp_linux":
+        if asset["name"] == YTDLP:
             download_link = asset["browser_download_url"]
             sha = asset["digest"].split(':')[1]
             break
     # Checks the sha256 of the latest release with the one in the folder
-    if os.path.exists("yt-dlp_linux"):
-        with open("yt-dlp_linux", "rb") as file:
+    if os.path.exists(YTDLP):
+        with open(YTDLP, "rb") as file:
             s = sha256(file.read())
             if s.hexdigest() == sha:
                 optwin.update_label.setText("Already have the latest version")
@@ -434,7 +454,8 @@ def download_yt_dlp(optwin, check):
 
 
 def handle_yt_download(process, optwin):
-    data = process.readAllStandardError().data().decode()
+    encoding = locale.getpreferredencoding(False)
+    data = process.readAllStandardError().data().decode(encoding, errors="replace")
     out = data.strip()
     if out:
         out = out.split()
@@ -448,10 +469,7 @@ def download_finished(exit_code, optwin):
         optwin.download_lineEdit.setText("Error")
     else:
         optwin.download_lineEdit.setText("Finished")
-        proc = QProcess()
-        proc.setProgram("chmod")
-        proc.setArguments(["+x", "./yt-dlp_linux"])
-        proc.start()
+        os.chmod(YTDLP, 0o755)
 
 
 def addToQ(quality, custom=False):
@@ -462,12 +480,13 @@ def addToQ(quality, custom=False):
     window.link_line.clear()
 
     proc1 = QProcess()
-    proc1.setProgram("./yt-dlp_linux")
+    proc1.setProgram(YTDLP)
+    proxyData = getProxyData() if SETTINGS["PROXY"] else ""
     quality = format_quality(quality)[1]
     if quality != "ba" and not custom:
         quality = quality[:-3]
         proc1.setArguments([link, "-f", "ba", "--print",
-                           "%(title)s//--//%(filesize)s"])
+                           "%(title)s//--//%(filesize)s", "--proxy", proxyData])
         proc1.readyReadStandardOutput.connect(lambda: handle_name_size(proc1))
         proc1.readyReadStandardError.connect(
             lambda: handle_name_size_error(proc1))
@@ -478,9 +497,9 @@ def addToQ(quality, custom=False):
         proc1.start()
 
     proc2 = QProcess()
-    proc2.setProgram("./yt-dlp_linux")
+    proc2.setProgram(YTDLP)
     proc2.setArguments([link, "-f", quality, "--print",
-                       "%(title)s//--//%(filesize)s"])
+                       "%(title)s//--//%(filesize)s", "--proxy", proxyData])
     proc2.readyReadStandardOutput.connect(lambda: handle_name_size(proc2))
     proc2.readyReadStandardError.connect(lambda: handle_name_size_error(proc2))
     proc2.finished.connect(lambda code: update_name_size_finished(code, proc2))
@@ -503,13 +522,15 @@ def update_name_size_finished(code, process):
 
 
 def handle_name_size_error(process):
-    data = process.readAllStandardError().data().decode()
+    encoding = locale.getpreferredencoding(False)
+    data = process.readAllStandardError().data().decode(encoding, errors="replace")
     if data.strip():
         print(data.strip())
 
 
 def handle_name_size(process):
-    data = process.readAllStandardOutput().data().decode()
+    encoding = locale.getpreferredencoding(False)
+    data = process.readAllStandardOutput().data().decode(encoding, errors="replace")
     index = -1
     for ps in processes:
         if process in ps:
