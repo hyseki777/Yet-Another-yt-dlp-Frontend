@@ -4,7 +4,7 @@
 
 Simple yt-dlp frontend made with Pyside6.
 
-Tested on Debian Trixie and CachyOS, both KDE. I may do a build for Windows.
+Tested on Debian Trixie and CachyOS, both KDE, and Windows 10.
 
 If you double-click the item on the table it will make a small window with the stdout of that process, everything else should be 'intuitive', graphic design is my passion. Check the settings for the download location.
 
