@@ -27,9 +27,9 @@ def getYTDLP():
     if system == "Windows":
         return "yt-dlp.exe"
     elif system == "Linux":
-        return "yt-dlp_linux"
+        return "./yt-dlp_linux"
     elif system == "Darwin":
-        return "yt-dlp_macos"
+        return "./yt-dlp_macos"
     else:
         raise Exception("System not supported")
 
