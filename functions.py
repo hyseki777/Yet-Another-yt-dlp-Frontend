@@ -155,7 +155,9 @@ def process_finished(exit_code, process):
             p = ps
             break
     window.q_tableWidget.setItem(p[2], 4, QTableWidgetItem("-----B/S"))  # Speed
+    window.q_tableWidget.item(p[2], 4).setTextAlignment(Qt.AlignCenter)
     window.q_tableWidget.setItem(p[2], 5, QTableWidgetItem("--:--"))  # Remaining
+    window.q_tableWidget.item(p[2], 5).setTextAlignment(Qt.AlignCenter)
     progress = window.q_tableWidget.item(p[2], 2).text()
     if progress == "Downloading":
         progress = ""
@@ -170,6 +172,7 @@ def process_finished(exit_code, process):
         QMessageBox.information(window, "Alert", msg)
     elif exit_code == 0:  # succesful
         window.q_tableWidget.setItem(p[2], 2, QTableWidgetItem("Finished"))
+        window.q_tableWidget.item(p[2], 2).setTextAlignment(Qt.AlignCenter)
         processes.remove(p)
         download(True)
         return

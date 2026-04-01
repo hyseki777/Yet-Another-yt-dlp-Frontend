@@ -20,6 +20,13 @@ if __name__ == "__main__":
     functions.setWindow(window)
     functions.setDefaultQuality()
 
+    from PySide6.QtWidgets import QHeaderView
+    header = window.q_tableWidget.horizontalHeader()
+    header.setStretchLastSection(False)
+    header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+    for i in range(1, window.q_tableWidget.columnCount()):
+        header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+
     window.link_line.setFocus()
     window.add_button.clicked.connect(
         lambda: functions.addToQ(window.quality_cb.currentText())
