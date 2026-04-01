@@ -6,22 +6,24 @@ from PySide6.QtUiTools import QUiLoader
 
 
 if __name__ == "__main__":
-
     app = QApplication([])
     loader = QUiLoader()
-    file = QFile('gui.ui')
+    file = QFile("gui.ui")
 
     window = loader.load(file)
     window.setWindowTitle("Yet Another yt-dlp Frontend")
     file.close()
 
     import functions
+
     functions.setLoader(loader)
     functions.setWindow(window)
     functions.setDefaultQuality()
 
+    window.link_line.setFocus()
     window.add_button.clicked.connect(
-        lambda: functions.addToQ(window.quality_cb.currentText()))
+        lambda: functions.addToQ(window.quality_cb.currentText())
+    )
     window.download_button.clicked.connect(lambda: functions.download(False))
     window.startAll_button.clicked.connect(functions.downloadAll)
     window.q_tableWidget.itemDoubleClicked.connect(functions.openOutputWindow)

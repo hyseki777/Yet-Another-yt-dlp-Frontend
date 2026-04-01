@@ -13,8 +13,15 @@ from hashlib import sha256
 def getSettings():
     if not os.path.exists("settings.ini"):
         with open("settings.ini", "w") as file:
-            s = {"DOWNLOAD_LOCATION": "/DEFAULT/", "PROXY": False, "USER": "",
-                 "PASSWORD": "", "ADDRESS": "", "PROTOCOL": "None", "DEFAULT_QUALITY": "720p"}
+            s = {
+                "DOWNLOAD_LOCATION": "/DEFAULT/",
+                "PROXY": False,
+                "USER": "",
+                "PASSWORD": "",
+                "ADDRESS": "",
+                "PROTOCOL": "None",
+                "DEFAULT_QUALITY": "720p",
+            }
             file.write(json.dumps(s))
             return s
     with open("settings.ini", "r") as file:
@@ -74,10 +81,10 @@ def handle_stdout(process, quality):
     q.put(data.strip())
     out = data.strip()
     if out:
-        if '%' in out:
+        if "%" in out:
             out = out.split()
             # Format --> ['[download]', '34.2%', 'of', '2.55MiB', 'at', '202.40KiB/s', 'ETA', '00:08']
-            if '%' in out[1] and ':' in out[7]:
+            if "%" in out[1] and ":" in out[7]:
                 percent = float(out[1][:-1])
                 if percent < ps[4]:
                     ps[3] = not ps[3]
@@ -85,18 +92,25 @@ def handle_stdout(process, quality):
                 if not ps[3] and quality != "ba":
                     window.q_tableWidget.setItem(
                         # Percent
-                        index, 2, QTableWidgetItem(f"Video ({out[1]})"))
+                        index,
+                        2,
+                        QTableWidgetItem(f"Video ({out[1]})"),
+                    )
                 else:
                     window.q_tableWidget.setItem(
                         # Percent
-                        index, 2, QTableWidgetItem(f"Audio ({out[1]})"))
+                        index,
+                        2,
+                        QTableWidgetItem(f"Audio ({out[1]})"),
+                    )
                 window.q_tableWidget.setItem(
-                    index, 4, QTableWidgetItem(out[5]))  # Speed
+                    index, 4, QTableWidgetItem(out[5])
+                )  # Speed
                 window.q_tableWidget.setItem(
-                    index, 5, QTableWidgetItem(out[7]))  # Remaining
+                    index, 5, QTableWidgetItem(out[7])
+                )  # Remaining
         for i in range(2, 6):
-            window.q_tableWidget.item(
-                index, i).setTextAlignment(Qt.AlignCenter)
+            window.q_tableWidget.item(index, i).setTextAlignment(Qt.AlignCenter)
         for win in outputWindows:
             if not win.isVisible():
                 outputWindows.remove(win)
@@ -125,12 +139,13 @@ def handle_list_stdout(process):
 # 6 278 webm  256x144     30    |   2.26MiB   77k https | vp9             77k video only          144p, webm_dash
 #    1   2      3          4  5 6      7       8    9   10  11            12     13        14  15   16   17
 
+
 def list_finished(process, lfwin):
     global FORMATLIST
     lfwin.label.setText("Double Click the Format to Add it to the Queue")
     while not FORMATLIST.empty():
         line = FORMATLIST.get()
-    lfwin.listWidget.addItems(line.split('\n'))
+    lfwin.listWidget.addItems(line.split("\n"))
 
 
 def process_finished(exit_code, process):
@@ -139,43 +154,45 @@ def process_finished(exit_code, process):
         if process in ps:
             p = ps
             break
-    window.q_tableWidget.setItem(
-        p[2], 4, QTableWidgetItem("-----B/S"))  # Speed
-    window.q_tableWidget.setItem(
-        p[2], 5, QTableWidgetItem("--:--"))  # Remaining
+    window.q_tableWidget.setItem(p[2], 4, QTableWidgetItem("-----B/S"))  # Speed
+    window.q_tableWidget.setItem(p[2], 5, QTableWidgetItem("--:--"))  # Remaining
     progress = window.q_tableWidget.item(p[2], 2).text()
     if progress == "Downloading":
-        progress = ''
+        progress = ""
     if exit_code == 1:  # general error
         window.q_tableWidget.setItem(
-            p[2], 2, QTableWidgetItem("Error (" + progress + ")"))
+            p[2], 2, QTableWidgetItem("Error (" + progress + ")")
+        )
         msg = "Download Error on element " + str(p[2] + 1) + ":<br>"
         q = p[1]
         while not q.empty():
             msg += q.get() + "<br>"
-        QMessageBox.information(window, 'Alert', msg)
+        QMessageBox.information(window, "Alert", msg)
     elif exit_code == 0:  # succesful
-        window.q_tableWidget.setItem(
-            p[2], 2, QTableWidgetItem("Finished"))
+        window.q_tableWidget.setItem(p[2], 2, QTableWidgetItem("Finished"))
         processes.remove(p)
         download(True)
         return
     else:  # terminate
         window.q_tableWidget.setItem(
-            p[2], 2, QTableWidgetItem("Stopped (" + progress + ")"))
+            p[2], 2, QTableWidgetItem("Stopped (" + progress + ")")
+        )
     for i in range(2, 6):
-        window.q_tableWidget.item(
-            p[2], i).setTextAlignment(Qt.AlignCenter)
+        window.q_tableWidget.item(p[2], i).setTextAlignment(Qt.AlignCenter)
     processes.remove(p)
 
 
 def download(qFlag):
     if not os.path.exists(YTDLP):
-        return QMessageBox.information(window, 'Alert', "yt-dlp not found, download it from the settings")
+        return QMessageBox.information(
+            window, "Alert", "yt-dlp not found, download it from the settings"
+        )
     if SETTINGS["DOWNLOAD_LOCATION"] == "/DEFAULT/":
-        return QMessageBox.information(window, 'Alert', "Download location not set, please check the settings")
+        return QMessageBox.information(
+            window, "Alert", "Download location not set, please check the settings"
+        )
 
-    link = ''
+    link = ""
     index = -1
     for i in range(window.q_tableWidget.rowCount()):
         status = window.q_tableWidget.item(i, 2).text()
@@ -184,10 +201,10 @@ def download(qFlag):
             link = link[0] if len(link) == 1 else link[1]
             index = i
             break
-    if link == '' and len(processes) == 0:
+    if link == "" and len(processes) == 0:
         if qFlag:
-            return QMessageBox.information(window, 'Alert', "Queue Finished")
-        return QMessageBox.information(window, 'Alert', "Empty Queue")
+            return QMessageBox.information(window, "Alert", "Queue Finished")
+        return QMessageBox.information(window, "Alert", "Empty Queue")
     if index != -1:
         quality = format_quality(window.q_tableWidget.item(index, 1).text())
         process = QProcess()
@@ -200,19 +217,49 @@ def download(qFlag):
         if "&list" in link:
             nameFormat = "%(playlist_index)s-" + nameFormat
         if quality[1] == "ba":
-            process.setArguments([link, "--extract-audio", "--audio-format", "mp3", "-o", nameFormat,
-                                 "--embed-thumbnail", "--convert-thumbnails", "jpg", "--embed-chapters",
-                                  "-P", SETTINGS["DOWNLOAD_LOCATION"], "--proxy", proxyData])
+            process.setArguments(
+                [
+                    link,
+                    "--extract-audio",
+                    "--audio-format",
+                    "mp3",
+                    "-o",
+                    nameFormat,
+                    "--embed-thumbnail",
+                    "--convert-thumbnails",
+                    "jpg",
+                    "--embed-chapters",
+                    "-P",
+                    SETTINGS["DOWNLOAD_LOCATION"],
+                    "--proxy",
+                    proxyData,
+                ]
+            )
         else:
-            process.setArguments([link, "-f", quality[1], "-o", nameFormat, "--embed-thumbnail",
-                                 "--convert-thumbnails", "jpg", "--embed-chapters",
-                                  "-P", SETTINGS["DOWNLOAD_LOCATION"], "--proxy", proxyData])
+            process.setArguments(
+                [
+                    link,
+                    "-f",
+                    quality[1],
+                    "-o",
+                    nameFormat,
+                    "--embed-thumbnail",
+                    "--convert-thumbnails",
+                    "jpg",
+                    "--embed-chapters",
+                    "-P",
+                    SETTINGS["DOWNLOAD_LOCATION"],
+                    "--proxy",
+                    proxyData,
+                ]
+            )
         process.readyReadStandardOutput.connect(
-            lambda: handle_stdout(process, quality[1]))
-        process.finished.connect(
-            lambda code: process_finished(code, process))
+            lambda: handle_stdout(process, quality[1])
+        )
+        process.finished.connect(lambda code: process_finished(code, process))
         process.start()
         window.q_tableWidget.setItem(index, 2, QTableWidgetItem("Downloading"))
+        window.q_tableWidget.item(index, 2).setTextAlignment(Qt.AlignCenter)
 
 
 def getProxyData():
@@ -236,21 +283,20 @@ def downloadAll():
 
 def format_quality(quality):
     q = [quality, quality]  # quality pre and post format
-    presetQ = ["Only Audio", "Best Quality",
-               "240p", "360p", "480p", "720p", "1080p"]
-    if (quality in presetQ):
-        if (quality[-1] == 'p'):
+    presetQ = ["Only Audio", "Best Quality", "240p", "360p", "480p", "720p", "1080p"]
+    if quality in presetQ:
+        if quality[-1] == "p":
             q[1] = f"bv*[height<={quality[:-1]}]+ba"
-        elif (quality == "Only Audio"):
+        elif quality == "Only Audio":
             q[1] = "ba"
-        elif (quality == "Best Quality"):
+        elif quality == "Best Quality":
             q[1] = "bv+ba"
     return q
 
 
 def openOutputWindow(item):
     row = item.row()
-    outFile = QFile('output.ui')
+    outFile = QFile("output.ui")
     outWindow = loader.load(outFile)
     outWindow.setWindowTitle("stdout from row --->" + str(row + 1))
     outFile.close()
@@ -260,7 +306,7 @@ def openOutputWindow(item):
 
 
 def openOptions():
-    optFile = QFile('settings.ui')
+    optFile = QFile("settings.ui")
     optWindow = loader.load(optFile)
     optWindow.setWindowTitle("Settings")
     optFile.close()
@@ -278,14 +324,13 @@ def openOptions():
     optWindow.protocol_comboBox.setCurrentText(SETTINGS["PROTOCOL"])
     optWindow.quality_cb.setCurrentText(SETTINGS["DEFAULT_QUALITY"])
     optWindow.save_button.clicked.connect(lambda: saveOptions(optWindow))
-    optWindow.proxy_checkBox.stateChanged.connect(
-        lambda: toggleProxy(optWindow))
+    optWindow.proxy_checkBox.stateChanged.connect(lambda: toggleProxy(optWindow))
     optWindow.update_label.setAlignment(Qt.AlignRight)
     optWindow.download_lineEdit.setReadOnly(True)
-    optWindow.download_button.clicked.connect(
-        lambda: download_yt_dlp(optWindow, False))
+    optWindow.download_button.clicked.connect(lambda: download_yt_dlp(optWindow, False))
     optWindow.checkUpdate_pushButton.clicked.connect(
-        lambda: download_yt_dlp(optWindow, True))
+        lambda: download_yt_dlp(optWindow, True)
+    )
     optWindow.show()
     optWindows.append(optWindow)
 
@@ -320,8 +365,15 @@ def saveOptions(optwin):
     protocol = optwin.protocol_comboBox.currentText()
     defaultQ = optwin.quality_cb.currentText()
     with open("settings.ini", "w") as file:
-        s = {"DOWNLOAD_LOCATION": location, "PROXY": proxy, "USER": user,
-             "PASSWORD": passw, "ADDRESS": address, "PROTOCOL": protocol, "DEFAULT_QUALITY": defaultQ}
+        s = {
+            "DOWNLOAD_LOCATION": location,
+            "PROXY": proxy,
+            "USER": user,
+            "PASSWORD": passw,
+            "ADDRESS": address,
+            "PROTOCOL": protocol,
+            "DEFAULT_QUALITY": defaultQ,
+        }
         file.write(json.dumps(s))
     global SETTINGS
     SETTINGS = s
@@ -330,15 +382,16 @@ def saveOptions(optwin):
 
 
 def openListFormats():
-    if window.link_line.text() == '':
+    if window.link_line.text() == "":
         return
-    lfFile = QFile('list_formats.ui')
+    lfFile = QFile("list_formats.ui")
     lfWindow = loader.load(lfFile)
     lfWindow.setWindowTitle("List of Formats")
     lfFile.close()
     lfWindow.label.setAlignment(Qt.AlignCenter)
     lfWindow.listWidget.itemDoubleClicked.connect(
-        lambda item: addCustomToQ(item, lfWindow))
+        lambda item: addCustomToQ(item, lfWindow)
+    )
     lfWindow.close_button.clicked.connect(lfWindow.close)
     lfWindow.show()
     formatsWindows.append(lfWindow)
@@ -377,7 +430,7 @@ def up():
     a = window.q_tableWidget.selectedIndexes()
     rows = sorted(set(i.row() for i in a))
     for r in rows:
-        temp = ''
+        temp = ""
         if r > 0:
             for ps in processes:
                 if ps[2] == r:
@@ -385,9 +438,10 @@ def up():
                 elif ps[2] == r - 1:
                     ps[2] = r
             for i in range(window.q_tableWidget.columnCount()):
-                temp = window.q_tableWidget.item(r-1, i).text()
+                temp = window.q_tableWidget.item(r - 1, i).text()
                 window.q_tableWidget.setItem(
-                    r-1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text()))
+                    r - 1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text())
+                )
                 window.q_tableWidget.setItem(r, i, QTableWidgetItem(temp))
             window.q_tableWidget.selectRow(r - 1)
 
@@ -396,7 +450,7 @@ def down():
     a = window.q_tableWidget.selectedIndexes()
     rows = sorted(set(i.row() for i in a), reverse=True)
     for r in rows:
-        temp = ''
+        temp = ""
         if r < window.q_tableWidget.rowCount() - 1:
             for ps in processes:
                 if ps[2] == r:
@@ -404,9 +458,10 @@ def down():
                 elif ps[2] == r + 1:
                     ps[2] = r
             for i in range(window.q_tableWidget.columnCount()):
-                temp = window.q_tableWidget.item(r+1, i).text()
+                temp = window.q_tableWidget.item(r + 1, i).text()
                 window.q_tableWidget.setItem(
-                    r+1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text()))
+                    r + 1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text())
+                )
                 window.q_tableWidget.setItem(r, i, QTableWidgetItem(temp))
             window.q_tableWidget.selectRow(r + 1)
 
@@ -416,12 +471,12 @@ def download_yt_dlp(optwin, check):
     url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
     response = requests.get(url)
     release = response.json()
-    download_link = ''
-    sha = ''
+    download_link = ""
+    sha = ""
     for asset in release["assets"]:
         if asset["name"] == YTDLP:
             download_link = asset["browser_download_url"]
-            sha = asset["digest"].split(':')[1]
+            sha = asset["digest"].split(":")[1]
             break
     # Checks the sha256 of the latest release with the one in the folder
     if os.path.exists(YTDLP):
@@ -439,10 +494,8 @@ def download_yt_dlp(optwin, check):
     proc = QProcess()
     proc.setProgram("curl")
     proc.setArguments(["-LO", download_link])
-    proc.readyReadStandardError.connect(
-        lambda: handle_yt_download(proc, optwin))
-    proc.finished.connect(
-        lambda code: download_finished(code, optwin))
+    proc.readyReadStandardError.connect(lambda: handle_yt_download(proc, optwin))
+    proc.finished.connect(lambda code: download_finished(code, optwin))
     proc.start()
 
 
@@ -460,8 +513,11 @@ def handle_yt_download(process, optwin):
     if out:
         out = out.split()
         if len(out) == 12:
-            optwin.download_lineEdit.setText(f"Downloading || {out[0]}% of {out[1]} at {
-                                             out[11]}/s, remaining {out[10]} ||")
+            optwin.download_lineEdit.setText(
+                f"Downloading || {out[0]}% of {out[1]} at {out[11]}/s, remaining {
+                    out[10]
+                } ||"
+            )
 
 
 def download_finished(exit_code, optwin):
@@ -474,7 +530,7 @@ def download_finished(exit_code, optwin):
 
 def addToQ(quality, custom=False):
     link = window.link_line.text()
-    if link == '':
+    if link == "":
         return
     add_row([link, quality, "Added", "-----MB", "-----B/S", "--:--"])
     window.link_line.clear()
@@ -485,26 +541,42 @@ def addToQ(quality, custom=False):
     quality = format_quality(quality)[1]
     if quality != "ba" and not custom:
         quality = quality[:-3]
-        proc1.setArguments([link, "-f", "ba", "--print",
-                           "%(title)s//--//%(filesize)s", "--proxy", proxyData])
+        proc1.setArguments(
+            [
+                link,
+                "-f",
+                "ba",
+                "--print",
+                "%(title)s//--//%(filesize)s",
+                "--proxy",
+                proxyData,
+            ]
+        )
         proc1.readyReadStandardOutput.connect(lambda: handle_name_size(proc1))
-        proc1.readyReadStandardError.connect(
-            lambda: handle_name_size_error(proc1))
-        proc1.finished.connect(
-            lambda code: update_name_size_finished(code, proc1))
+        proc1.readyReadStandardError.connect(lambda: handle_name_size_error(proc1))
+        proc1.finished.connect(lambda code: update_name_size_finished(code, proc1))
         processes.append(
-            [proc1, Queue(maxsize=10), window.q_tableWidget.rowCount() - 1])
+            [proc1, Queue(maxsize=10), window.q_tableWidget.rowCount() - 1]
+        )
         proc1.start()
 
     proc2 = QProcess()
     proc2.setProgram(YTDLP)
-    proc2.setArguments([link, "-f", quality, "--print",
-                       "%(title)s//--//%(filesize)s", "--proxy", proxyData])
+    proc2.setArguments(
+        [
+            link,
+            "-f",
+            quality,
+            "--print",
+            "%(title)s//--//%(filesize)s",
+            "--proxy",
+            proxyData,
+        ]
+    )
     proc2.readyReadStandardOutput.connect(lambda: handle_name_size(proc2))
     proc2.readyReadStandardError.connect(lambda: handle_name_size_error(proc2))
     proc2.finished.connect(lambda code: update_name_size_finished(code, proc2))
-    processes.append([proc2, Queue(maxsize=10),
-                      window.q_tableWidget.rowCount() - 1])
+    processes.append([proc2, Queue(maxsize=10), window.q_tableWidget.rowCount() - 1])
     proc2.start()
 
 
@@ -542,16 +614,19 @@ def handle_name_size(process):
         if "//--//" not in link:
             window.q_tableWidget.setItem(
                 # column 0 -> name
-                index, 0, QTableWidgetItem(f"{out[0]}//--//{link}"))
+                index,
+                0,
+                QTableWidgetItem(f"{out[0]}//--//{link}"),
+            )
         if out[1] != "NA":
             size = formatBytes(float(out[1]))
             tableSize = window.q_tableWidget.item(index, 3).text()
             if tableSize != "-----MB":
-                size = formatBytes(size, True) + \
-                    formatBytes(tableSize, inversed=True)
+                size = formatBytes(size, True) + formatBytes(tableSize, inversed=True)
                 size = formatBytes(size)
             window.q_tableWidget.setItem(
-                index, 3, QTableWidgetItem(size))  # column 3 -> size
+                index, 3, QTableWidgetItem(size)
+            )  # column 3 -> size
     window.q_tableWidget.item(index, 3).setTextAlignment(Qt.AlignCenter)
 
 
@@ -572,7 +647,7 @@ def formatBytes(n, inversed=False):  # if inversed then is to convert to bytes
 
 
 def pressedEnter():
-    if window.link_line.text() == '':
+    if window.link_line.text() == "":
         download(False)
     else:
         addToQ(window.quality_cb.currentText())
