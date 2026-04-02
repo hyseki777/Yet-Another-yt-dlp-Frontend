@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMessageBox, QTableWidgetItem, QMainWindow
+from PySide6.QtWidgets import QMessageBox, QTableWidgetItem, QMainWindow, QPushButton
 from PySide6.QtCore import QFile, QProcess, Qt
 from PySide6.QtUiTools import QUiLoader
 from queue import Queue
@@ -81,12 +81,39 @@ def handle_stdout(process, quality):
     q.put(data.strip())
     out = data.strip()
     if out:
+        if out.startswith("[download] Downloading item"):
+            # s format ---> [download] Downloading item 2 of 32  sometimes have more lines appended
+            s = out.split()
+            curr = s[3]
+            total = s[5]
+            link = window.q_tableWidget.item(index, 0).text()
+            if f"/{total}] " in link:
+                link = link.split(" ", maxsplit=1)[1]
+            link = f"[{curr}/{total}] {link}"
+            window.q_tableWidget.setItem(index, 0, QTableWidgetItem(link))
+
+        if "[download] Destination: " in out:
+            name = out.split(
+                f"[download] Destination: {SETTINGS['DOWNLOAD_LOCATION']}"
+            )[1]
+            name = name.split(r"\n")[0]
+            link = window.q_tableWidget.item(index, 0).text()
+            line = link.split(" ", maxsplit=1) if link.startswith("[") else ["", link]
+            if line[0]:
+                line[0] += " "
+            if "//--//" in link:
+                line[1] = link.split("//--//")[1]
+            window.q_tableWidget.setItem(
+                index, 0, QTableWidgetItem(f"{line[0]}{name}//--//{line[1]}")
+            )
+
         if "%" in out:
             out = out.split()
             # Format --> ['[download]', '34.2%', 'of', '2.55MiB', 'at', '202.40KiB/s', 'ETA', '00:08']
-            if "%" in out[1] and ":" in out[7]:
+            # if Video finished out ends on the size value
+            if "%" in out[1] and len(out) > 4:
                 percent = float(out[1][:-1])
-                if percent < ps[4]:
+                if percent < ps[4]:  # ps[4] = percent saved on the process array
                     ps[3] = not ps[3]
                 ps[4] = percent
                 if not ps[3] and quality != "ba":
@@ -185,7 +212,9 @@ def process_finished(exit_code, process):
     processes.remove(p)
 
 
-def download(qFlag):
+def download(
+    qFlag,
+):  # qFlag --> to know it is trigger automaticly from a finished download
     if not os.path.exists(YTDLP):
         return QMessageBox.information(
             window, "Alert", "yt-dlp not found, download it from the settings"
@@ -194,12 +223,13 @@ def download(qFlag):
         return QMessageBox.information(
             window, "Alert", "Download location not set, please check the settings"
         )
-
+    wasOnAudio = False
     link = ""
     index = -1
     for i in range(window.q_tableWidget.rowCount()):
         status = window.q_tableWidget.item(i, 2).text()
         if status == "Added" or "Stopped" in status or "Error" in status:
+            wasOnAudio = "Audio" in status
             link = window.q_tableWidget.item(i, 0).text().split("//--//")
             link = link[0] if len(link) == 1 else link[1]
             index = i
@@ -213,49 +243,35 @@ def download(qFlag):
         process = QProcess()
 
         # Array Format -> [process, outputs, row, DlAudio, percent, videoSize]
-        processes.append([process, Queue(maxsize=10), index, False, 0, -1])
+        processes.append([process, Queue(maxsize=10), index, wasOnAudio, 0, -1])
         process.setProgram(YTDLP)
         proxyData = getProxyData() if SETTINGS["PROXY"] else ""
         nameFormat = f"%(title)s [{quality[0]}].%(ext)s"
         if "&list" in link:
             nameFormat = "%(playlist_index)s-" + nameFormat
+        args = [
+            link,
+            "-o",
+            nameFormat,
+            "--embed-thumbnail",
+            "--convert-thumbnails",
+            "jpg",
+            "--embed-chapters",
+            "-P",
+            SETTINGS["DOWNLOAD_LOCATION"],
+            "--proxy",
+            proxyData,
+        ]
         if quality[1] == "ba":
-            process.setArguments(
-                [
-                    link,
-                    "--extract-audio",
-                    "--audio-format",
-                    "mp3",
-                    "-o",
-                    nameFormat,
-                    "--embed-thumbnail",
-                    "--convert-thumbnails",
-                    "jpg",
-                    "--embed-chapters",
-                    "-P",
-                    SETTINGS["DOWNLOAD_LOCATION"],
-                    "--proxy",
-                    proxyData,
-                ]
-            )
+            args.extend(["--extract-audio", "--audio-format", "mp3"])
         else:
-            process.setArguments(
-                [
-                    link,
-                    "-f",
-                    quality[1],
-                    "-o",
-                    nameFormat,
-                    "--embed-thumbnail",
-                    "--convert-thumbnails",
-                    "jpg",
-                    "--embed-chapters",
-                    "-P",
-                    SETTINGS["DOWNLOAD_LOCATION"],
-                    "--proxy",
-                    proxyData,
-                ]
-            )
+            args.extend(["-f", quality[1]])
+        if platform.system() == "Windows":
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            ffmpeg_path = os.path.join(base_dir, "ffmpeg.exe")
+            args.extend(["--ffmpeg-location", ffmpeg_path])
+
+        process.setArguments(args)
         process.readyReadStandardOutput.connect(
             lambda: handle_stdout(process, quality[1])
         )
@@ -361,6 +377,10 @@ def toggleProxy(optwin):
 
 def saveOptions(optwin):
     location = optwin.dlocation_lineEdit.text()
+    if platform.system() == "Linux" and not location.endswith("/"):
+        location += "/"
+    elif platform.system() == "Windows" and not location.endswith("\\"):
+        location += "\\"
     proxy = optwin.proxy_checkBox.isChecked()
     user = optwin.user_lineEdit.text()
     passw = optwin.pass_lineEdit.text()
@@ -535,6 +555,22 @@ def addToQ(quality, custom=False):
     link = window.link_line.text()
     if link == "":
         return
+    if "&list=" in link:
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Download Playlist?")
+        msgBox.setText(
+            "You entered a link of a video from a playlist.\nDo you want to download only this video or the full playlist?"
+        )
+        yes_button = QPushButton("Only this video")
+        no_button = QPushButton("Full playlist")
+        msgBox.addButton(yes_button, QMessageBox.YesRole)
+        msgBox.addButton(no_button, QMessageBox.NoRole)
+        msgBox.setDefaultButton(yes_button)
+        msgBox.exec()
+
+        if msgBox.clickedButton() == yes_button:
+            link = link.split("&list=")[0]
+
     add_row([link, quality, "Added", "-----MB", "-----B/S", "--:--"])
     window.link_line.clear()
 
@@ -615,12 +651,13 @@ def handle_name_size(process):
         out = out.split("//--//")
         link = window.q_tableWidget.item(index, 0).text()
         if "//--//" not in link:
+            line = link.split(" ", maxsplit=1) if link.startswith("[") else ["", link]
+            if line[0]:
+                line[0] += " "
             window.q_tableWidget.setItem(
-                # column 0 -> name
-                index,
-                0,
-                QTableWidgetItem(f"{out[0]}//--//{link}"),
+                index, 0, QTableWidgetItem(f"{line[0]}{out[0]}//--//{line[1]}")
             )
+
         if out[1] != "NA":
             size = formatBytes(float(out[1]))
             tableSize = window.q_tableWidget.item(index, 3).text()

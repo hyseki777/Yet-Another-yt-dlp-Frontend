@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QHeaderView
 from PySide6.QtCore import QFile
 from PySide6.QtUiTools import QUiLoader
 
@@ -20,7 +20,6 @@ if __name__ == "__main__":
     functions.setWindow(window)
     functions.setDefaultQuality()
 
-    from PySide6.QtWidgets import QHeaderView
     header = window.q_tableWidget.horizontalHeader()
     header.setStretchLastSection(False)
     header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
