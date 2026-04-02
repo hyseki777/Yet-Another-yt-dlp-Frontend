@@ -17,6 +17,6 @@ DEPENDENCIES
 Besides that the build is made with pyinstaller so it shouldn't have any other dependency.
 <br />
 
-Tested on a fresh install of Debian Trixie with KDE. It worked right out the box but needs the yt-dlp dependencies to have full functionality.
+Windows version comes with the ffmpeg and ffprobe binaries so it shouldnt have any problems running.
 
 Link to the amazing yt-dlp page: https://github.com/yt-dlp/yt-dlp
