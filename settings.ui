@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>497</width>
-    <height>387</height>
+    <height>389</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -216,6 +216,13 @@
    <item>
     <layout class="QHBoxLayout" name="bottom_hLayout">
      <item>
+      <widget class="QCheckBox" name="split_checkBox">
+       <property name="text">
+        <string>Split chapters into separated videos</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="bottom_hSpacer">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
@@ -231,7 +238,7 @@
      <item>
       <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Version 1.3.2</string>
+        <string>Version 1.3.3</string>
        </property>
       </widget>
      </item>
@@ -239,6 +246,20 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="save_hLayout">
+     <item>
+      <widget class="QCheckBox" name="dlsubs_checkBox">
+       <property name="text">
+        <string>Download subs as a file</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="embedsubs_checkBox">
+       <property name="text">
+        <string>Embed subs</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <spacer name="save_hSpacer">
        <property name="orientation">

@@ -3,6 +3,7 @@
 from PySide6.QtWidgets import QApplication, QHeaderView
 from PySide6.QtCore import QFile
 from PySide6.QtUiTools import QUiLoader
+from PySide6.QtGui import QIcon
 
 
 if __name__ == "__main__":
@@ -12,6 +13,7 @@ if __name__ == "__main__":
 
     window = loader.load(file)
     window.setWindowTitle("Yet Another yt-dlp Frontend")
+    window.setWindowIcon(QIcon("icon.png"))
     file.close()
 
     import functions

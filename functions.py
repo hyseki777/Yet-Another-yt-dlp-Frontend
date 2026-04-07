@@ -21,6 +21,9 @@ def getSettings():
                 "ADDRESS": "",
                 "PROTOCOL": "None",
                 "DEFAULT_QUALITY": "720p",
+                "SPLIT": False,
+                "DLSUBS": False,
+                "EMBEDSUBS": False,
             }
             file.write(json.dumps(s))
             return s
@@ -262,6 +265,12 @@ def download(
             "--proxy",
             proxyData,
         ]
+        if SETTINGS["SPLIT"]:
+            args.append("--split-chapters")
+        if SETTINGS["DLSUBS"]:
+            args.append("--write-subs")
+        if SETTINGS["EMBEDSUBS"]:
+            args.append("--embed-subs")
         if quality[1] == "ba":
             args.extend(["--extract-audio", "--audio-format", "mp3"])
         else:
@@ -342,6 +351,10 @@ def openOptions():
     optWindow.address_lineEdit.setText(SETTINGS["ADDRESS"])
     optWindow.protocol_comboBox.setCurrentText(SETTINGS["PROTOCOL"])
     optWindow.quality_cb.setCurrentText(SETTINGS["DEFAULT_QUALITY"])
+    optWindow.split_checkBox.setChecked(SETTINGS["SPLIT"])
+    optWindow.dlsubs_checkBox.setChecked(SETTINGS["DLSUBS"])
+    optWindow.embedsubs_checkBox.setChecked(SETTINGS["EMBEDSUBS"])
+
     optWindow.save_button.clicked.connect(lambda: saveOptions(optWindow))
     optWindow.proxy_checkBox.stateChanged.connect(lambda: toggleProxy(optWindow))
     optWindow.update_label.setAlignment(Qt.AlignRight)
@@ -387,6 +400,9 @@ def saveOptions(optwin):
     address = optwin.address_lineEdit.text()
     protocol = optwin.protocol_comboBox.currentText()
     defaultQ = optwin.quality_cb.currentText()
+    split = optwin.split_checkBox.isChecked()
+    dlsubs = optwin.dlsubs_checkBox.isChecked()
+    embedsubs = optwin.embedsubs_checkBox.isChecked()
     with open("settings.ini", "w") as file:
         s = {
             "DOWNLOAD_LOCATION": location,
@@ -396,6 +412,9 @@ def saveOptions(optwin):
             "ADDRESS": address,
             "PROTOCOL": protocol,
             "DEFAULT_QUALITY": defaultQ,
+            "SPLIT": split,
+            "DLSUBS": dlsubs,
+            "EMBEDSUBS": embedsubs,
         }
         file.write(json.dumps(s))
     global SETTINGS
@@ -443,6 +462,11 @@ def remove():
         top = rows[0]
         for r in rows:
             window.q_tableWidget.removeRow(r)
+            for ps in processes:
+                if ps[2] == r:
+                    ps[0].kill()
+                elif ps[2] > r:
+                    ps[2] -= 1
         if top < window.q_tableWidget.rowCount():
             window.q_tableWidget.selectRow(top)
         elif top > 0:
@@ -466,6 +490,9 @@ def up():
                     r - 1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text())
                 )
                 window.q_tableWidget.setItem(r, i, QTableWidgetItem(temp))
+                window.q_tableWidget.item(r - 1, i).setTextAlignment(Qt.AlignCenter)
+                window.q_tableWidget.item(r, i).setTextAlignment(Qt.AlignCenter)
+
             window.q_tableWidget.selectRow(r - 1)
 
 
@@ -486,6 +513,8 @@ def down():
                     r + 1, i, QTableWidgetItem(window.q_tableWidget.item(r, i).text())
                 )
                 window.q_tableWidget.setItem(r, i, QTableWidgetItem(temp))
+                window.q_tableWidget.item(r + 1, i).setTextAlignment(Qt.AlignCenter)
+                window.q_tableWidget.item(r, i).setTextAlignment(Qt.AlignCenter)
             window.q_tableWidget.selectRow(r + 1)
 
 
@@ -559,7 +588,7 @@ def addToQ(quality, custom=False):
         msgBox = QMessageBox()
         msgBox.setWindowTitle("Download Playlist?")
         msgBox.setText(
-            "You entered a link of a video from a playlist.\nDo you want to download only this video or the full playlist?"
+            "You entered a link of a video from a playlist.\nDo you want to download only this video or the full playlist?\n"
         )
         yes_button = QPushButton("Only this video")
         no_button = QPushButton("Full playlist")
