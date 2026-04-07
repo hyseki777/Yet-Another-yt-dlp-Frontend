@@ -1,6 +1,6 @@
 # Yet-Another-yt-dlp-Frontend
 
-![Screenshot](Screenshot.png)![Screenshot2](Screenshot2.png)
+![Screenshot1](Screenshot1.png)![Screenshot2](Screenshot2.png)
 
 Simple yt-dlp frontend made with Pyside6.
 
