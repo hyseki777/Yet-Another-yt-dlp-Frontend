@@ -109,7 +109,8 @@ def handle_stdout(process, quality):
             window.q_tableWidget.setItem(
                 index, 0, QTableWidgetItem(f"{line[0]}{name}//--//{line[1]}")
             )
-
+        if out.startswith("[info] Writing video subtitles to:"):
+            ps[3] = not ps[3]
         if "%" in out:
             out = out.split()
             # Format --> ['[download]', '34.2%', 'of', '2.55MiB', 'at', '202.40KiB/s', 'ETA', '00:08']
